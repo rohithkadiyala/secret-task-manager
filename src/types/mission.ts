@@ -7,7 +7,7 @@ export interface Todo {
   codename: string; // The to-do title/name
   briefing: string; // Optional description/details
   priority: 'low' | 'medium' | 'high' | 'critical'; // Priority level
-  status: 'pending' | 'in-progress' | 'completed' | 'aborted';
+  status: 'inactive' | 'active' | 'completed';
   createdAt: Date;
   dueDate?: Date; // Optional due date
   completedAt?: Date;

@@ -5,7 +5,7 @@ import TodoCard from '@/components/TodoCard';
 import AddTodoForm from '@/components/AddTodoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LogOut, Shield, Target, CheckCircle, AlertTriangle, Search, ArrowUpDown } from 'lucide-react';
+import { LogOut, Shield, Target, CheckCircle, AlertTriangle, Search, ArrowUpDown, Pause } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -23,7 +23,7 @@ const Dashboard: React.FC = () => {
       codename: 'OPERATION NIGHTFALL',
       briefing: 'Retrieve classified documents from the embassy vault before dawn.',
       priority: 'high',
-      status: 'pending',
+      status: 'active',
       createdAt: new Date(Date.now() - 86400000),
       dueDate: new Date(Date.now() + 86400000 * 2),
     },
@@ -32,7 +32,7 @@ const Dashboard: React.FC = () => {
       codename: 'OPERATION GHOST PROTOCOL',
       briefing: 'Establish secure communication channel with field agents.',
       priority: 'medium',
-      status: 'pending',
+      status: 'inactive',
       createdAt: new Date(Date.now() - 172800000),
       dueDate: new Date(Date.now() + 86400000 * 5),
     },
@@ -41,13 +41,13 @@ const Dashboard: React.FC = () => {
       codename: 'OPERATION SILENT THUNDER',
       briefing: 'Neutralize surveillance equipment at the target location.',
       priority: 'critical',
-      status: 'pending',
+      status: 'active',
       createdAt: new Date(),
       dueDate: new Date(Date.now() + 86400000),
     },
   ]);
 
-  const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [filter, setFilter] = useState<'all' | 'inactive' | 'active' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('created');
 
@@ -55,16 +55,16 @@ const Dashboard: React.FC = () => {
     const newTodo: Todo = {
       ...todoData,
       id: crypto.randomUUID(),
-      status: 'pending',
+      status: 'active',
       createdAt: new Date(),
     };
     setTodos([newTodo, ...todos]);
   };
 
-  const completeTodo = (id: string) => {
+  const changeStatus = (id: string, status: Todo['status']) => {
     setTodos(todos.map(t =>
       t.id === id
-        ? { ...t, status: 'completed' as const, completedAt: new Date() }
+        ? { ...t, status, completedAt: status === 'completed' ? new Date() : undefined }
         : t
     ));
   };
@@ -81,7 +81,8 @@ const Dashboard: React.FC = () => {
     let result = [...todos];
 
     // Filter by status
-    if (filter === 'active') result = result.filter(t => t.status !== 'completed');
+    if (filter === 'inactive') result = result.filter(t => t.status === 'inactive');
+    if (filter === 'active') result = result.filter(t => t.status === 'active');
     if (filter === 'completed') result = result.filter(t => t.status === 'completed');
 
     // Search by codename or briefing
@@ -117,9 +118,10 @@ const Dashboard: React.FC = () => {
   // Calculate statistics
   const stats = {
     total: todos.length,
-    active: todos.filter(t => t.status !== 'completed').length,
+    inactive: todos.filter(t => t.status === 'inactive').length,
+    active: todos.filter(t => t.status === 'active').length,
     completed: todos.filter(t => t.status === 'completed').length,
-    critical: todos.filter(t => t.priority === 'critical' && t.status !== 'completed').length,
+    critical: todos.filter(t => t.priority === 'critical' && t.status === 'active').length,
   };
 
   const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
@@ -136,10 +138,10 @@ const Dashboard: React.FC = () => {
               </div>
               <div>
                 <h1 className="font-orbitron text-lg font-bold text-foreground glow-text">
-                  SHADOW OPS
+                  SECRET TASK
                 </h1>
                 <p className="text-xs text-muted-foreground font-mono">
-                  To-Do Control Interface
+                  Mission Control Interface
                 </p>
               </div>
             </div>
@@ -169,12 +171,18 @@ const Dashboard: React.FC = () => {
 
       <main className="container mx-auto px-4 py-8">
         {/* Stats bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
           <StatCard
             icon={<Target className="w-5 h-5" />}
-            label="Total Tasks"
+            label="Total Missions"
             value={stats.total}
             color="text-primary"
+          />
+          <StatCard
+            icon={<Pause className="w-5 h-5" />}
+            label="Inactive"
+            value={stats.inactive}
+            color="text-muted-foreground"
           />
           <StatCard
             icon={<AlertTriangle className="w-5 h-5" />}
@@ -209,7 +217,7 @@ const Dashboard: React.FC = () => {
           <Progress value={progressPercent} className="h-2" />
         </div>
 
-        {/* Add todo form */}
+        {/* Add mission form */}
         <div className="mb-6">
           <AddTodoForm onAdd={addTodo} />
         </div>
@@ -219,7 +227,7 @@ const Dashboard: React.FC = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input
-              placeholder="Search tasks..."
+              placeholder="Search missions..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="pl-10 bg-background/50"
@@ -243,7 +251,7 @@ const Dashboard: React.FC = () => {
 
         {/* Filter tabs */}
         <div className="flex items-center gap-2 mb-6">
-          {(['all', 'active', 'completed'] as const).map((f) => (
+          {(['all', 'inactive', 'active', 'completed'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setFilter(f)}
@@ -261,14 +269,14 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Todo list */}
+        {/* Mission list */}
         <div className="space-y-3">
           {processedTodos.length > 0 ? (
             processedTodos.map((todo, index) => (
               <TodoCard
                 key={todo.id}
                 todo={todo}
-                onComplete={completeTodo}
+                onStatusChange={changeStatus}
                 onDelete={deleteTodo}
                 index={index}
               />
@@ -277,10 +285,10 @@ const Dashboard: React.FC = () => {
             <div className="text-center py-12 border border-dashed border-border">
               <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="font-orbitron text-muted-foreground uppercase tracking-wider">
-                No tasks found
+                No missions found
               </p>
               <p className="text-sm text-muted-foreground/60 mt-1 font-mono">
-                {searchQuery ? 'Try a different search term' : 'Create a new task to get started'}
+                {searchQuery ? 'Try a different search term' : 'Create a new mission to get started'}
               </p>
             </div>
           )}

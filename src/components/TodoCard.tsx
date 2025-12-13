@@ -1,8 +1,15 @@
 import React from 'react';
 import { Todo, PRIORITY_LEVELS } from '@/types/mission';
 import { Button } from '@/components/ui/button';
-import { Check, X, Target, Clock, AlertTriangle } from 'lucide-react';
+import { Check, X, Target, Clock, AlertTriangle, Pause, Play } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 /**
  * Calculates countdown text and urgency level for a due date
@@ -35,27 +42,50 @@ const getCountdown = (dueDate: Date): { text: string; urgent: boolean; overdue: 
 
 interface TodoCardProps {
   todo: Todo;
-  onComplete: (id: string) => void;
+  onStatusChange: (id: string, status: Todo['status']) => void;
   onDelete: (id: string) => void;
   index: number;
 }
 
 const TodoCard: React.FC<TodoCardProps> = ({
   todo,
-  onComplete,
+  onStatusChange,
   onDelete,
   index,
 }) => {
   const priorityConfig = PRIORITY_LEVELS[todo.priority];
   const isCompleted = todo.status === 'completed';
+  const isInactive = todo.status === 'inactive';
   const countdown = todo.dueDate && !isCompleted ? getCountdown(todo.dueDate) : null;
+
+  const getStatusIcon = () => {
+    switch (todo.status) {
+      case 'completed':
+        return <Check className="w-5 h-5 text-success" />;
+      case 'inactive':
+        return <Pause className="w-5 h-5 text-muted-foreground" />;
+      case 'active':
+        return countdown?.overdue 
+          ? <AlertTriangle className="w-5 h-5 text-accent animate-pulse" />
+          : <Target className={cn("w-5 h-5", priorityConfig.color)} />;
+      default:
+        return <Target className={cn("w-5 h-5", priorityConfig.color)} />;
+    }
+  };
+
+  const getStatusStyles = () => {
+    if (isCompleted) return "border-success bg-success/20";
+    if (isInactive) return "border-muted-foreground bg-muted/20";
+    if (countdown?.overdue) return "border-accent bg-accent/20";
+    return `${priorityConfig.borderColor} ${priorityConfig.bgColor}`;
+  };
 
   return (
     <div
       className={cn(
         "group relative border bg-card/50 backdrop-blur-sm p-4 transition-all duration-300 hover:bg-card/80 animate-slide-in",
-        isCompleted ? "border-muted opacity-60" : `border-border hover:border-primary/50`,
-        countdown?.overdue && "border-accent/50"
+        isCompleted ? "border-muted opacity-60" : isInactive ? "border-muted opacity-70" : `border-border hover:border-primary/50`,
+        countdown?.overdue && !isInactive && "border-accent/50"
       )}
       style={{ animationDelay: `${index * 50}ms` }}
     >
@@ -63,7 +93,7 @@ const TodoCard: React.FC<TodoCardProps> = ({
       <div
         className={cn(
           "absolute left-0 top-0 bottom-0 w-1 transition-all duration-300",
-          isCompleted ? "bg-success" : countdown?.overdue ? "bg-accent" : priorityConfig.bgColor.replace('/20', '')
+          isCompleted ? "bg-success" : isInactive ? "bg-muted-foreground" : countdown?.overdue ? "bg-accent" : priorityConfig.bgColor.replace('/20', '')
         )}
       />
 
@@ -72,23 +102,13 @@ const TodoCard: React.FC<TodoCardProps> = ({
         <div
           className={cn(
             "flex-shrink-0 w-10 h-10 rounded-sm border flex items-center justify-center transition-all",
-            isCompleted
-              ? "border-success bg-success/20"
-              : countdown?.overdue
-                ? "border-accent bg-accent/20"
-                : `${priorityConfig.borderColor} ${priorityConfig.bgColor}`
+            getStatusStyles()
           )}
         >
-          {isCompleted ? (
-            <Check className="w-5 h-5 text-success" />
-          ) : countdown?.overdue ? (
-            <AlertTriangle className="w-5 h-5 text-accent animate-pulse" />
-          ) : (
-            <Target className={cn("w-5 h-5", priorityConfig.color)} />
-          )}
+          {getStatusIcon()}
         </div>
 
-        {/* To-do details */}
+        {/* Mission details */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1 flex-wrap">
             {/* Priority badge */}
@@ -102,9 +122,21 @@ const TodoCard: React.FC<TodoCardProps> = ({
             >
               {priorityConfig.label}
             </span>
+
+            {/* Status badge */}
+            <span
+              className={cn(
+                "text-[10px] font-orbitron px-2 py-0.5 rounded-sm border uppercase tracking-wider",
+                isCompleted ? "text-success bg-success/20 border-success/50" :
+                isInactive ? "text-muted-foreground bg-muted/20 border-muted-foreground/50" :
+                "text-primary bg-primary/20 border-primary/50"
+              )}
+            >
+              {todo.status}
+            </span>
             
             {/* Due date countdown */}
-            {countdown && (
+            {countdown && !isInactive && (
               <span 
                 className={cn(
                   "text-[10px] font-orbitron px-2 py-0.5 rounded-sm border uppercase tracking-wider flex items-center gap-1",
@@ -127,17 +159,17 @@ const TodoCard: React.FC<TodoCardProps> = ({
             </span>
           </div>
 
-          {/* To-do codename */}
+          {/* Mission codename */}
           <h3
             className={cn(
               "font-orbitron text-sm font-medium mb-1 transition-all",
-              isCompleted ? "text-muted-foreground line-through" : "text-foreground"
+              isCompleted ? "text-muted-foreground line-through" : isInactive ? "text-muted-foreground" : "text-foreground"
             )}
           >
             {todo.codename}
           </h3>
 
-          {/* To-do briefing */}
+          {/* Mission briefing */}
           {todo.briefing && (
             <p className="text-xs text-muted-foreground font-mono line-clamp-2">
               {todo.briefing}
@@ -146,23 +178,37 @@ const TodoCard: React.FC<TodoCardProps> = ({
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-          {!isCompleted && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => onComplete(todo.id)}
-              className="h-8 w-8 text-success hover:text-success hover:bg-success/20"
-              title="Mark as completed"
-            >
-              <Check className="w-4 h-4" />
-            </Button>
-          )}
+        <div className="flex items-center gap-2">
+          <Select 
+            value={todo.status} 
+            onValueChange={(value) => onStatusChange(todo.id, value as Todo['status'])}
+          >
+            <SelectTrigger className="w-[110px] h-8 text-[10px] font-orbitron">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="inactive">
+                <span className="flex items-center gap-2">
+                  <Pause className="w-3 h-3" /> Inactive
+                </span>
+              </SelectItem>
+              <SelectItem value="active">
+                <span className="flex items-center gap-2">
+                  <Play className="w-3 h-3" /> Active
+                </span>
+              </SelectItem>
+              <SelectItem value="completed">
+                <span className="flex items-center gap-2">
+                  <Check className="w-3 h-3" /> Completed
+                </span>
+              </SelectItem>
+            </SelectContent>
+          </Select>
           <Button
             size="icon"
             variant="ghost"
             onClick={() => onDelete(todo.id)}
-            className="h-8 w-8 text-accent hover:text-accent hover:bg-accent/20"
+            className="h-8 w-8 text-accent hover:text-accent hover:bg-accent/20 opacity-0 group-hover:opacity-100 transition-opacity"
             title="Delete"
           >
             <X className="w-4 h-4" />

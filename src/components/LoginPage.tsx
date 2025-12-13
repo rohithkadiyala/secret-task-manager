@@ -66,7 +66,7 @@ const LoginPage: React.FC = () => {
               <Shield className="w-10 h-10 text-primary" />
             </div>
             <h1 className="font-orbitron text-2xl font-bold text-foreground glow-text mb-2">
-              SHADOW OPS
+              SECRET TASK
             </h1>
             <p className="text-muted-foreground text-sm tracking-widest uppercase">
               Mission Control Interface
@@ -89,6 +89,9 @@ const LoginPage: React.FC = () => {
                 disabled={isLoading}
                 autoFocus
               />
+              <p className="text-xs text-muted-foreground/70 font-mono mt-1">
+                hint: password
+              </p>
             </div>
 
             {/* Error message display */}
