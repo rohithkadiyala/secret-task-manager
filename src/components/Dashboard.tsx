@@ -1,92 +1,128 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mission } from '@/types/mission';
-import MissionCard from '@/components/MissionCard';
-import AddMissionForm from '@/components/AddMissionForm';
+import { Todo, SortOption } from '@/types/mission';
+import TodoCard from '@/components/TodoCard';
+import AddTodoForm from '@/components/AddTodoForm';
 import { Button } from '@/components/ui/button';
-import { LogOut, Shield, Target, CheckCircle, AlertTriangle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { LogOut, Shield, Target, CheckCircle, AlertTriangle, Search, ArrowUpDown } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
-/**
- * Main dashboard component for mission control
- * Displays all missions and provides CRUD operations
- */
 const Dashboard: React.FC = () => {
   const { agentId, logout } = useAuth();
-  const [missions, setMissions] = useState<Mission[]>([
-    // Sample missions for demonstration
+  const [todos, setTodos] = useState<Todo[]>([
     {
       id: '1',
       codename: 'OPERATION NIGHTFALL',
       briefing: 'Retrieve classified documents from the embassy vault before dawn.',
-      threatLevel: 'high',
+      priority: 'high',
       status: 'pending',
       createdAt: new Date(Date.now() - 86400000),
+      dueDate: new Date(Date.now() + 86400000 * 2),
     },
     {
       id: '2',
       codename: 'OPERATION GHOST PROTOCOL',
       briefing: 'Establish secure communication channel with field agents.',
-      threatLevel: 'medium',
+      priority: 'medium',
       status: 'pending',
       createdAt: new Date(Date.now() - 172800000),
+      dueDate: new Date(Date.now() + 86400000 * 5),
     },
     {
       id: '3',
       codename: 'OPERATION SILENT THUNDER',
       briefing: 'Neutralize surveillance equipment at the target location.',
-      threatLevel: 'critical',
+      priority: 'critical',
       status: 'pending',
       createdAt: new Date(),
+      dueDate: new Date(Date.now() + 86400000),
     },
   ]);
 
   const [filter, setFilter] = useState<'all' | 'active' | 'completed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<SortOption>('created');
 
-  /**
-   * Adds a new mission to the list
-   */
-  const addMission = (missionData: Omit<Mission, 'id' | 'createdAt' | 'status'>) => {
-    const newMission: Mission = {
-      ...missionData,
+  const addTodo = (todoData: Omit<Todo, 'id' | 'createdAt' | 'status'>) => {
+    const newTodo: Todo = {
+      ...todoData,
       id: crypto.randomUUID(),
       status: 'pending',
       createdAt: new Date(),
     };
-    setMissions([newMission, ...missions]);
+    setTodos([newTodo, ...todos]);
   };
 
-  /**
-   * Marks a mission as completed
-   */
-  const completeMission = (id: string) => {
-    setMissions(missions.map(m =>
-      m.id === id
-        ? { ...m, status: 'completed' as const, completedAt: new Date() }
-        : m
+  const completeTodo = (id: string) => {
+    setTodos(todos.map(t =>
+      t.id === id
+        ? { ...t, status: 'completed' as const, completedAt: new Date() }
+        : t
     ));
   };
 
-  /**
-   * Deletes a mission from the list
-   */
-  const deleteMission = (id: string) => {
-    setMissions(missions.filter(m => m.id !== id));
+  const deleteTodo = (id: string) => {
+    setTodos(todos.filter(t => t.id !== id));
   };
 
-  // Filter missions based on current filter
-  const filteredMissions = missions.filter(m => {
-    if (filter === 'active') return m.status !== 'completed';
-    if (filter === 'completed') return m.status === 'completed';
-    return true;
-  });
+  // Priority order for sorting
+  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+
+  // Filter, search, and sort todos
+  const processedTodos = useMemo(() => {
+    let result = [...todos];
+
+    // Filter by status
+    if (filter === 'active') result = result.filter(t => t.status !== 'completed');
+    if (filter === 'completed') result = result.filter(t => t.status === 'completed');
+
+    // Search by codename or briefing
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(t =>
+        t.codename.toLowerCase().includes(query) ||
+        t.briefing.toLowerCase().includes(query)
+      );
+    }
+
+    // Sort
+    result.sort((a, b) => {
+      switch (sortBy) {
+        case 'dueDate':
+          if (!a.dueDate && !b.dueDate) return 0;
+          if (!a.dueDate) return 1;
+          if (!b.dueDate) return -1;
+          return a.dueDate.getTime() - b.dueDate.getTime();
+        case 'priority':
+          return priorityOrder[a.priority] - priorityOrder[b.priority];
+        case 'name':
+          return a.codename.localeCompare(b.codename);
+        case 'created':
+        default:
+          return b.createdAt.getTime() - a.createdAt.getTime();
+      }
+    });
+
+    return result;
+  }, [todos, filter, searchQuery, sortBy]);
 
   // Calculate statistics
   const stats = {
-    total: missions.length,
-    active: missions.filter(m => m.status !== 'completed').length,
-    completed: missions.filter(m => m.status === 'completed').length,
-    critical: missions.filter(m => m.threatLevel === 'critical' && m.status !== 'completed').length,
+    total: todos.length,
+    active: todos.filter(t => t.status !== 'completed').length,
+    completed: todos.filter(t => t.status === 'completed').length,
+    critical: todos.filter(t => t.priority === 'critical' && t.status !== 'completed').length,
   };
+
+  const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background grid-bg">
@@ -94,7 +130,6 @@ const Dashboard: React.FC = () => {
       <header className="border-b border-border bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
-            {/* Logo and title */}
             <div className="flex items-center gap-4">
               <div className="w-10 h-10 rounded-full border border-primary/50 flex items-center justify-center">
                 <Shield className="w-5 h-5 text-primary" />
@@ -104,12 +139,11 @@ const Dashboard: React.FC = () => {
                   SHADOW OPS
                 </h1>
                 <p className="text-xs text-muted-foreground font-mono">
-                  Mission Control Interface
+                  To-Do Control Interface
                 </p>
               </div>
             </div>
 
-            {/* Agent info and logout */}
             <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
                 <p className="text-xs text-muted-foreground uppercase tracking-wider">
@@ -133,19 +167,18 @@ const Dashboard: React.FC = () => {
         </div>
       </header>
 
-      {/* Main content */}
       <main className="container mx-auto px-4 py-8">
         {/* Stats bar */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
           <StatCard
             icon={<Target className="w-5 h-5" />}
-            label="Total Missions"
+            label="Total Tasks"
             value={stats.total}
             color="text-primary"
           />
           <StatCard
             icon={<AlertTriangle className="w-5 h-5" />}
-            label="Active Ops"
+            label="Active"
             value={stats.active}
             color="text-warning"
           />
@@ -163,9 +196,49 @@ const Dashboard: React.FC = () => {
           />
         </div>
 
-        {/* Add mission form */}
+        {/* Progress bar */}
+        <div className="mb-6 border border-border bg-card/50 backdrop-blur-sm p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-orbitron text-primary uppercase tracking-wider">
+              Overall Progress
+            </span>
+            <span className="text-xs font-orbitron text-foreground">
+              {Math.round(progressPercent)}%
+            </span>
+          </div>
+          <Progress value={progressPercent} className="h-2" />
+        </div>
+
+        {/* Add todo form */}
         <div className="mb-6">
-          <AddMissionForm onAdd={addMission} />
+          <AddTodoForm onAdd={addTodo} />
+        </div>
+
+        {/* Search and Sort controls */}
+        <div className="flex flex-col sm:flex-row gap-4 mb-6">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search tasks..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10 bg-background/50"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <ArrowUpDown className="w-4 h-4 text-muted-foreground" />
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortOption)}>
+              <SelectTrigger className="w-[160px] font-orbitron text-xs">
+                <SelectValue placeholder="Sort by" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="created">Date Created</SelectItem>
+                <SelectItem value="dueDate">Due Date</SelectItem>
+                <SelectItem value="priority">Priority</SelectItem>
+                <SelectItem value="name">Name</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Filter tabs */}
@@ -188,15 +261,15 @@ const Dashboard: React.FC = () => {
           ))}
         </div>
 
-        {/* Mission list */}
+        {/* Todo list */}
         <div className="space-y-3">
-          {filteredMissions.length > 0 ? (
-            filteredMissions.map((mission, index) => (
-              <MissionCard
-                key={mission.id}
-                mission={mission}
-                onComplete={completeMission}
-                onDelete={deleteMission}
+          {processedTodos.length > 0 ? (
+            processedTodos.map((todo, index) => (
+              <TodoCard
+                key={todo.id}
+                todo={todo}
+                onComplete={completeTodo}
+                onDelete={deleteTodo}
                 index={index}
               />
             ))
@@ -204,17 +277,16 @@ const Dashboard: React.FC = () => {
             <div className="text-center py-12 border border-dashed border-border">
               <Target className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
               <p className="font-orbitron text-muted-foreground uppercase tracking-wider">
-                No missions found
+                No tasks found
               </p>
               <p className="text-sm text-muted-foreground/60 mt-1 font-mono">
-                Create a new mission to get started
+                {searchQuery ? 'Try a different search term' : 'Create a new task to get started'}
               </p>
             </div>
           )}
         </div>
       </main>
 
-      {/* Footer */}
       <footer className="border-t border-border py-6 mt-auto">
         <div className="container mx-auto px-4 text-center">
           <p className="text-xs text-muted-foreground font-mono">
@@ -226,9 +298,6 @@ const Dashboard: React.FC = () => {
   );
 };
 
-/**
- * Statistics card component for the dashboard header
- */
 interface StatCardProps {
   icon: React.ReactNode;
   label: string;
