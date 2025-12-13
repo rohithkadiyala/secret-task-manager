@@ -1,21 +1,22 @@
 /**
- * Mission (Task) type definition for the secret agency to-do application
- * Each mission represents an operation that agents need to complete
+ * To-Do type definition for the secret agency application
+ * Each to-do represents a task that agents need to complete
  */
-export interface Mission {
+export interface Todo {
   id: string;
-  codename: string; // The mission title/name
+  codename: string; // The to-do title/name
   briefing: string; // Optional description/details
-  threatLevel: 'low' | 'medium' | 'high' | 'critical'; // Priority level
+  priority: 'low' | 'medium' | 'high' | 'critical'; // Priority level
   status: 'pending' | 'in-progress' | 'completed' | 'aborted';
   createdAt: Date;
+  dueDate?: Date; // Optional due date
   completedAt?: Date;
 }
 
 /**
- * Threat level configuration for visual styling
+ * Priority level configuration for visual styling
  */
-export const THREAT_LEVELS = {
+export const PRIORITY_LEVELS = {
   low: {
     label: 'LOW',
     color: 'text-success',
@@ -41,3 +42,5 @@ export const THREAT_LEVELS = {
     borderColor: 'border-accent',
   },
 } as const;
+
+export type SortOption = 'created' | 'dueDate' | 'priority' | 'name';
