@@ -14,7 +14,77 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      missions: {
+        Row: {
+          briefing: string | null
+          codename: string
+          completed_at: string | null
+          created_at: string
+          due_date: string | null
+          id: string
+          priority: string
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          briefing?: string | null
+          codename: string
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          briefing?: string | null
+          codename?: string
+          completed_at?: string | null
+          created_at?: string
+          due_date?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "missions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          agent_id: string
+          created_at: string
+          email: string
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          agent_id: string
+          created_at?: string
+          email: string
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          agent_id?: string
+          created_at?: string
+          email?: string
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

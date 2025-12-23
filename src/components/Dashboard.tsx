@@ -1,11 +1,12 @@
 import React, { useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useMissions } from '@/hooks/useMissions';
 import { Todo, SortOption } from '@/types/mission';
 import TodoCard from '@/components/TodoCard';
 import AddTodoForm from '@/components/AddTodoForm';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { LogOut, Shield, Target, CheckCircle, AlertTriangle, Search, ArrowUpDown, Pause } from 'lucide-react';
+import { LogOut, Shield, Target, CheckCircle, AlertTriangle, Search, ArrowUpDown, Pause, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import {
   Select,
@@ -16,69 +17,19 @@ import {
 } from '@/components/ui/select';
 
 const Dashboard: React.FC = () => {
-  const { agentId, logout } = useAuth();
-  const [todos, setTodos] = useState<Todo[]>([
-    {
-      id: '1',
-      codename: 'OPERATION NIGHTFALL',
-      briefing: 'Retrieve classified documents from the embassy vault before dawn.',
-      priority: 'high',
-      status: 'active',
-      createdAt: new Date(Date.now() - 86400000),
-      dueDate: new Date(Date.now() + 86400000 * 2),
-    },
-    {
-      id: '2',
-      codename: 'OPERATION GHOST PROTOCOL',
-      briefing: 'Establish secure communication channel with field agents.',
-      priority: 'medium',
-      status: 'inactive',
-      createdAt: new Date(Date.now() - 172800000),
-      dueDate: new Date(Date.now() + 86400000 * 5),
-    },
-    {
-      id: '3',
-      codename: 'OPERATION SILENT THUNDER',
-      briefing: 'Neutralize surveillance equipment at the target location.',
-      priority: 'critical',
-      status: 'active',
-      createdAt: new Date(),
-      dueDate: new Date(Date.now() + 86400000),
-    },
-  ]);
+  const { agentId, signOut } = useAuth();
+  const { missions, isLoading, addMission, updateMissionStatus, deleteMission } = useMissions();
 
   const [filter, setFilter] = useState<'all' | 'inactive' | 'active' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<SortOption>('created');
-
-  const addTodo = (todoData: Omit<Todo, 'id' | 'createdAt' | 'status'>) => {
-    const newTodo: Todo = {
-      ...todoData,
-      id: crypto.randomUUID(),
-      status: 'active',
-      createdAt: new Date(),
-    };
-    setTodos([newTodo, ...todos]);
-  };
-
-  const changeStatus = (id: string, status: Todo['status']) => {
-    setTodos(todos.map(t =>
-      t.id === id
-        ? { ...t, status, completedAt: status === 'completed' ? new Date() : undefined }
-        : t
-    ));
-  };
-
-  const deleteTodo = (id: string) => {
-    setTodos(todos.filter(t => t.id !== id));
-  };
 
   // Priority order for sorting
   const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
 
   // Filter, search, and sort todos
   const processedTodos = useMemo(() => {
-    let result = [...todos];
+    let result = [...missions];
 
     // Filter by status
     if (filter === 'inactive') result = result.filter(t => t.status === 'inactive');
@@ -113,18 +64,43 @@ const Dashboard: React.FC = () => {
     });
 
     return result;
-  }, [todos, filter, searchQuery, sortBy]);
+  }, [missions, filter, searchQuery, sortBy]);
 
   // Calculate statistics
   const stats = {
-    total: todos.length,
-    inactive: todos.filter(t => t.status === 'inactive').length,
-    active: todos.filter(t => t.status === 'active').length,
-    completed: todos.filter(t => t.status === 'completed').length,
-    critical: todos.filter(t => t.priority === 'critical' && t.status === 'active').length,
+    total: missions.length,
+    inactive: missions.filter(t => t.status === 'inactive').length,
+    active: missions.filter(t => t.status === 'active').length,
+    completed: missions.filter(t => t.status === 'completed').length,
+    critical: missions.filter(t => t.priority === 'critical' && t.status === 'active').length,
   };
 
   const progressPercent = stats.total > 0 ? (stats.completed / stats.total) * 100 : 0;
+
+  const handleAddMission = (missionData: Omit<Todo, 'id' | 'createdAt' | 'status'>) => {
+    addMission(missionData);
+  };
+
+  const handleStatusChange = (id: string, status: Todo['status']) => {
+    updateMissionStatus(id, status);
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMission(id);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background grid-bg flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-primary animate-spin mx-auto mb-4" />
+          <p className="font-orbitron text-muted-foreground uppercase tracking-wider">
+            Loading missions...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background grid-bg">
@@ -152,13 +128,13 @@ const Dashboard: React.FC = () => {
                   Active Agent
                 </p>
                 <p className="font-orbitron text-sm text-primary">
-                  {agentId}
+                  {agentId || 'Loading...'}
                 </p>
               </div>
               <Button
                 variant="ghost"
                 size="icon"
-                onClick={logout}
+                onClick={signOut}
                 className="text-muted-foreground hover:text-accent"
                 title="Logout"
               >
@@ -219,7 +195,7 @@ const Dashboard: React.FC = () => {
 
         {/* Add mission form */}
         <div className="mb-6">
-          <AddTodoForm onAdd={addTodo} />
+          <AddTodoForm onAdd={handleAddMission} />
         </div>
 
         {/* Search and Sort controls */}
@@ -276,8 +252,8 @@ const Dashboard: React.FC = () => {
               <TodoCard
                 key={todo.id}
                 todo={todo}
-                onStatusChange={changeStatus}
-                onDelete={deleteTodo}
+                onStatusChange={handleStatusChange}
+                onDelete={handleDelete}
                 index={index}
               />
             ))
