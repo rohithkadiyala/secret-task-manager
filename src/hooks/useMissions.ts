@@ -53,7 +53,9 @@ export function useMissions() {
       const mappedMissions = (data as DatabaseMission[]).map(mapDatabaseToTodo);
       setMissions(mappedMissions);
     } catch (error) {
-      console.error('Error fetching missions:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error fetching missions:', error);
+      }
       toast({
         title: 'Error',
         description: 'Failed to load missions. Please try again.',
@@ -95,7 +97,9 @@ export function useMissions() {
         description: `${missionData.codename} has been added to your missions.`,
       });
     } catch (error) {
-      console.error('Error adding mission:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error adding mission:', error);
+      }
       toast({
         title: 'Error',
         description: 'Failed to create mission. Please try again.',
@@ -127,7 +131,9 @@ export function useMissions() {
           : m
       ));
     } catch (error) {
-      console.error('Error updating mission:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error updating mission:', error);
+      }
       toast({
         title: 'Error',
         description: 'Failed to update mission status. Please try again.',
@@ -152,7 +158,9 @@ export function useMissions() {
         description: 'The mission has been removed.',
       });
     } catch (error) {
-      console.error('Error deleting mission:', error);
+      if (import.meta.env.DEV) {
+        console.error('Error deleting mission:', error);
+      }
       toast({
         title: 'Error',
         description: 'Failed to delete mission. Please try again.',
